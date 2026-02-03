@@ -19,15 +19,14 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { useContext, useEffect, useState } from 'react'
+import { useContext, useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import api from '../../api/axios'
 import { AuthContext } from '../../auth/AuthContext'
 
 const ClassProfile = () => {
   const { class_id } = useParams()
-  const { academicYear, academicYears } =
-    useContext(AuthContext)
+  const { academicYears } = useContext(AuthContext)
 
   /* =========================
      STATE
@@ -48,66 +47,71 @@ const ClassProfile = () => {
   })
 
   /* =========================
-     LOAD DATA (ALL HOOKS FIRST)
+     LOAD BASE DATA
   ========================= */
   useEffect(() => {
-    api.get(`/admin/class/profile/${class_id}`)
-      .then(res => {
-        if (res.data.status === 'success') {
-          setProfile(res.data.data)
-        }
-      })
+    api.get(`/admin/class/profile/${class_id}`).then(res => {
+      if (res.data.status === 'success') setProfile(res.data.data)
+    })
 
-    api.get('/admin/teachers')
-      .then(res => {
-        if (res.data.status === 'success') {
-          setTeachers(res.data.data)
-        }
-      })
+    api.get('/admin/teachers').then(res => {
+      if (res.data.status === 'success') setTeachers(res.data.data)
+    })
 
-    api.get(`/admin/students/by-class/${class_id}`)
-      .then(res => {
-        if (res.data.status === 'success') {
-          setStudents(res.data.data)
-        }
-      })
+    api.get(`/admin/students/by-class/${class_id}`).then(res => {
+      if (res.data.status === 'success') setStudents(res.data.data)
+    })
 
-    api.get(`/admin/class/${class_id}/subjects`)
-      .then(res => {
-        if (res.data.status === 'success') {
-          setSubjects(res.data.data)
-        }
-      })
+    api.get(`/admin/class/${class_id}/subjects`).then(res => {
+      if (res.data.status === 'success') setSubjects(res.data.data)
+    })
   }, [class_id])
 
   /* =========================
-     PROMOTION PRE-CHECK
+     DERIVED VALUES (SAFE)
   ========================= */
   const currentLevel = Number(profile?.class_level || 0)
   const isLastClass = currentLevel >= 10
 
-  // ONLY immediate next academic year
-  const nextAcademicYear = academicYears.find(
-    y =>
-      y.academic_year_id ===
-        academicYear?.academic_year_id + 1 &&
-      !y.is_closed
-  )
+  const currentYear = useMemo(() => {
+    if (!profile) return null
+    return academicYears.find(
+      y => y.academic_year_id === profile.academic_year_id
+    )
+  }, [academicYears, profile])
 
+  const nextAcademicYear = useMemo(() => {
+    if (!currentYear) return null
+
+    return academicYears
+      .filter(
+        y =>
+          new Date(y.start_date) >
+          new Date(currentYear.start_date)
+      )
+      .sort(
+        (a, b) =>
+          new Date(a.start_date) -
+          new Date(b.start_date)
+      )[0] || null
+  }, [academicYears, currentYear])
+
+  /* =========================
+     LOAD NEXT YEAR CLASSES
+  ========================= */
   useEffect(() => {
     if (!nextAcademicYear || !profile) return
 
     api
-      .get(
-        `/admin/classes/${nextAcademicYear.academic_year_id}`
-      )
+      .get(`/admin/classes/${nextAcademicYear.academic_year_id}`)
       .then(res => {
         if (res.data.status === 'success') {
           const nextLevel = String(currentLevel + 1)
-          const filtered = res.data.data.filter(
-            c => c.class_level === nextLevel
+          setTargetClasses(
+            res.data.data.filter(
+              c => c.class_level === nextLevel
+            )
           )
-          setTargetClasses(filtered)
         }
       })
   }, [nextAcademicYear, profile, currentLevel])
@@ -143,23 +147,9 @@ const ClassProfile = () => {
       })
       .then(() => {
         setNewSubject({ subject_name: '', teacher_id: '' })
-        api
-          .get(`/admin/class/${class_id}/subjects`)
-          .then(r => setSubjects(r.data.data))
+        return api.get(`/admin/class/${class_id}/subjects`)
       })
-  }
-
-  const changeSubjectTeacher = (subject_id, teacher_id) => {
-    api
-      .put('/admin/subject/change-teacher', {
-        subject_id,
-        teacher_id,
-      })
-      .then(() =>
-        api
-          .get(`/admin/class/${class_id}/subjects`)
-          .then(r => setSubjects(r.data.data))
-      )
+      .then(r => setSubjects(r.data.data))
   }
 
   const promoteClass = () => {
@@ -167,8 +157,7 @@ const ClassProfile = () => {
 
     api
       .post('/admin/students/promote', {
-        from_academic_year_id:
-          profile.academic_year_id,
+        from_academic_year_id: profile.academic_year_id,
         to_academic_year_id:
           nextAcademicYear.academic_year_id,
         from_class_id: class_id,
@@ -181,9 +170,9 @@ const ClassProfile = () => {
   }
 
   /* =========================
-     SAFE RENDER GUARD
+     GUARD
   ========================= */
-  if (!profile || !academicYear) {
+  if (!profile) {
     return <Typography>Loading...</Typography>
   }
 
@@ -345,7 +334,8 @@ const ClassProfile = () => {
             </Typography>
           ) : targetClasses.length === 0 ? (
             <Typography color="error">
-              Create next class in next academic year.
+              Create Class {currentLevel + 1} in{' '}
+              {nextAcademicYear.year_name}
             </Typography>
           ) : (
             <Button

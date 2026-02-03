@@ -57,8 +57,8 @@ const AcademicYear = () => {
           end_date: '',
         })
 
-        loadYears()
         reloadAcademicYears() // 🔥 CRITICAL: update Topbar
+        loadYears()
       } else {
         alert(res.data.error || 'Failed')
       }

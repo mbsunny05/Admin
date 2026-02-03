@@ -23,40 +23,47 @@ export const AuthProvider = ({ children }) => {
       setUser(null)
     }
 
-    setLoading(false) // ✅ only here
+    setLoading(false)
   }, [])
 
   /* =========================
      LOAD ACADEMIC YEARS
   ========================= */
+  const loadAcademicYears = async () => {
+    try {
+      const res = await api.get('/admin/academic-years')
+      if (res.data.status === 'success') {
+        const years = res.data.data
+
+        setAcademicYears(years)
+
+        const savedYearId = Number(
+          localStorage.getItem('academic_year_id')
+        )
+
+        let selected =
+          years.find(y => y.academic_year_id === savedYearId) ||
+          years.find(y => y.is_active) ||
+          [...years].sort(
+            (a, b) => b.academic_year_id - a.academic_year_id
+          )[0] ||
+          null
+
+        setAcademicYear(selected)
+      }
+    } catch (err) {
+      console.error('Failed to load academic years')
+    }
+  }
+
   useEffect(() => {
-    if (!user) return
-
-    api.get('/admin/academic-years')
-      .then(res => {
-        if (res.data.status === 'success') {
-          const years = res.data.data
-          setAcademicYears(years)
-
-          const savedYearId =
-            localStorage.getItem('academic_year_id')
-
-          const selected =
-            years.find(
-              y =>
-                y.academic_year_id ===
-                Number(savedYearId)
-            ) ||
-            years.find(y => y.is_active) ||
-            null
-
-          setAcademicYear(selected)
-        }
-      })
+    if (user) {
+      loadAcademicYears()
+    }
   }, [user])
 
   /* =========================
-     PERSIST YEAR
+     PERSIST SELECTED YEAR
   ========================= */
   useEffect(() => {
     if (academicYear) {
@@ -86,6 +93,7 @@ export const AuthProvider = ({ children }) => {
         academicYears,
         academicYear,
         setAcademicYear,
+        reloadAcademicYears: loadAcademicYears,
         logout,
       }}
     >

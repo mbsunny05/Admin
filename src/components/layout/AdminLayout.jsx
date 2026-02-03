@@ -5,11 +5,14 @@ import Topbar from './Topbar'
 
 const AdminLayout = () => {
   return (
-    <Box sx={{ display: 'flex' }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
       <Sidebar />
+
       <Box sx={{ flexGrow: 1 }}>
         <Topbar />
-        <Box sx={{ p: 3 }}>
+
+        {/* MAIN CONTENT */}
+        <Box sx={{ p: 1 }}> {/* 👈 reduce padding */}
           <Outlet />
         </Box>
       </Box>
