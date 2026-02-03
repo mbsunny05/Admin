@@ -4,7 +4,7 @@ import axios from 'axios'
    AXIOS INSTANCE
 ========================= */
 const api = axios.create({
-  baseURL: 'http://localhost:4000', // backend base URL
+  baseURL: import.meta.env.VITE_API_URL, // ✅ FIXED
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -64,3 +64,4 @@ api.interceptors.response.use(
 )
 
 export default api
+

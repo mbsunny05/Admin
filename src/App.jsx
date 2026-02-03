@@ -17,6 +17,7 @@ import AddStudent from './pages/students/AddStudent'
 
 
 function App() {
+  console.log('API URL:', import.meta.env.VITE_API_URL)
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
